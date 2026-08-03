@@ -1,0 +1,516 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  color-scheme: dark;
+  --background: oklch(0.16 0.018 264);
+  --foreground: oklch(0.97 0.005 264);
+  --card: oklch(0.2 0.02 264);
+  --card-foreground: oklch(0.97 0.005 264);
+  --popover: oklch(0.19 0.02 264);
+  --popover-foreground: oklch(0.97 0.005 264);
+  --primary: oklch(0.62 0.19 264);
+  --primary-foreground: oklch(0.98 0.01 264);
+  --secondary: oklch(0.27 0.03 264);
+  --secondary-foreground: oklch(0.97 0.005 264);
+  --muted: oklch(0.25 0.02 264);
+  --muted-foreground: oklch(0.68 0.02 264);
+  --accent: oklch(0.58 0.2 292);
+  --accent-foreground: oklch(0.98 0.01 292);
+  --destructive: oklch(0.62 0.22 20);
+  --success: oklch(0.7 0.16 155);
+  --warning: oklch(0.78 0.15 75);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 12%);
+  --ring: oklch(0.62 0.19 264);
+  --chart-1: oklch(0.62 0.19 264);
+  --chart-2: oklch(0.58 0.2 292);
+  --chart-3: oklch(0.7 0.16 200);
+  --chart-4: oklch(0.7 0.16 155);
+  --chart-5: oklch(0.78 0.15 75);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.18 0.02 264);
+  --sidebar-foreground: oklch(0.97 0.005 264);
+  --sidebar-primary: oklch(0.62 0.19 264);
+  --sidebar-primary-foreground: oklch(0.98 0.01 264);
+  --sidebar-accent: oklch(0.27 0.03 264);
+  --sidebar-accent-foreground: oklch(0.97 0.005 264);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.62 0.19 264);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+}
+
+@utility glass {
+  background: color-mix(in oklch, var(--card) 60%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+}
+
+@utility glass-strong {
+  background: color-mix(in oklch, var(--card) 82%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+}
+
+@utility text-gradient {
+  background: linear-gradient(
+    100deg,
+    oklch(0.75 0.15 264),
+    oklch(0.7 0.2 292)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@utility gradient-brand {
+  background: linear-gradient(
+    120deg,
+    oklch(0.62 0.19 264),
+    oklch(0.58 0.2 292)
+  );
+}
+
+.grid-glow {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 4%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 4%) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* ── CSS-only pivot tabs ───────────────────────────────────────────── */
+.pivot-radio {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+/* Default state: show "How It Works" panel, hide "Features" panel */
+.pivot-panel-features { display: none; }
+.pivot-panel-how      { display: grid; }
+
+/* Active label styling — default: "How It Works" is active */
+.pivot-label-how {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 25%);
+}
+.pivot-label-features {
+  background: transparent;
+}
+
+/* When "Features" radio is checked: swap panels and labels */
+#pivot-features:checked ~ .pivot-panel-how      { display: none; }
+#pivot-features:checked ~ .pivot-panel-features { display: grid; }
+#pivot-features:checked ~ .pivot-tab-bar .pivot-label-features {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 25%);
+}
+#pivot-features:checked ~ .pivot-tab-bar .pivot-label-how {
+  background: transparent;
+  color: var(--muted-foreground);
+  box-shadow: none;
+}
+
+/* When "How It Works" radio is checked (explicit, handles re-click) */
+#pivot-how:checked ~ .pivot-panel-features { display: none; }
+#pivot-how:checked ~ .pivot-panel-how      { display: grid; }
+#pivot-how:checked ~ .pivot-tab-bar .pivot-label-how {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 2px 8px oklch(0 0 0 / 25%);
+}
+#pivot-how:checked ~ .pivot-tab-bar .pivot-label-features {
+  background: transparent;
+  color: var(--muted-foreground);
+  box-shadow: none;
+}
+/* ─────────────────────────────────────────────────────────────────── */
+
+/* ── Hero premium background ────────────────────────────────────────── */
+.hero-section {
+  background: radial-gradient(ellipse 80% 50% at 50% -10%, oklch(0.62 0.19 264 / 20%), transparent),
+              radial-gradient(ellipse 60% 40% at 0% 60%, oklch(0.58 0.2 292 / 15%), transparent),
+              radial-gradient(ellipse 50% 50% at 100% 80%, oklch(0.62 0.19 264 / 12%), transparent),
+              var(--background);
+}
+
+.hero-grid {
+  background-image:
+    linear-gradient(to right, oklch(1 0 0 / 5%) 1px, transparent 1px),
+    linear-gradient(to bottom, oklch(1 0 0 / 5%) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* Subtle CSS particles — random dots scattered via box-shadow */
+.hero-particles::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 15%, oklch(0.75 0.15 264 / 60%) 0%, transparent 100%),
+    radial-gradient(1px 1px at 75% 10%, oklch(0.7 0.2 292 / 50%) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 40% 30%, oklch(0.75 0.15 264 / 40%) 0%, transparent 100%),
+    radial-gradient(1px 1px at 85% 40%, oklch(0.7 0.2 292 / 35%) 0%, transparent 100%),
+    radial-gradient(1px 1px at 10% 55%, oklch(0.75 0.15 264 / 45%) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 60% 65%, oklch(0.7 0.2 292 / 30%) 0%, transparent 100%),
+    radial-gradient(1px 1px at 30% 80%, oklch(0.75 0.15 264 / 35%) 0%, transparent 100%),
+    radial-gradient(1px 1px at 90% 70%, oklch(0.7 0.2 292 / 40%) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 50% 90%, oklch(0.75 0.15 264 / 25%) 0%, transparent 100%),
+    radial-gradient(1px 1px at 5% 35%, oklch(0.7 0.2 292 / 30%) 0%, transparent 100%);
+  animation: particles-drift 20s linear infinite alternate;
+}
+
+@keyframes particles-drift {
+  from { transform: translateY(0px); }
+  to   { transform: translateY(-12px); }
+}
+
+.hero-badge {
+  animation: badge-glow 3s ease-in-out infinite alternate;
+}
+
+@keyframes badge-glow {
+  from { box-shadow: 0 0 0px oklch(0.62 0.19 264 / 0%); }
+  to   { box-shadow: 0 0 18px oklch(0.62 0.19 264 / 35%); }
+}
+
+.hero-underline {
+  display: block;
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, oklch(0.62 0.19 264), oklch(0.58 0.2 292));
+  animation: underline-grow 0.8s ease-out 0.3s both;
+  transform-origin: left;
+}
+
+@keyframes underline-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+/* ─────────────────────────────────────────────────────────────────────── */
+
+/* ── Upload box premium styles ──────────────────────────────────────── */
+.upload-box {
+  background: color-mix(in oklch, var(--secondary) 30%, transparent);
+  border: 2px dashed oklch(1 0 0 / 15%);
+}
+
+.upload-box:hover,
+.upload-box[data-active] {
+  border-color: oklch(0.62 0.19 264 / 60%);
+  background: color-mix(in oklch, var(--primary) 6%, var(--background));
+}
+
+/* Dotted pattern inside upload box */
+.upload-dots {
+  background-image: radial-gradient(circle, oklch(1 0 0 / 8%) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Animated glowing border — conic gradient rotates */
+.upload-border {
+  border-radius: inherit;
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+}
+
+.upload-border-active {
+  animation: border-spin 3s linear infinite;
+  border-image: conic-gradient(
+    from var(--border-angle, 0deg),
+    oklch(0.62 0.19 264 / 0%) 0%,
+    oklch(0.62 0.19 264) 20%,
+    oklch(0.58 0.2 292) 40%,
+    oklch(0.62 0.19 264 / 0%) 60%
+  ) 1;
+}
+
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes border-spin {
+  to { --border-angle: 360deg; }
+}
+
+/* Slow pulse ring */
+@keyframes ping-slow {
+  0%   { transform: scale(1);    opacity: 0.4; }
+  100% { transform: scale(1.06); opacity: 0;   }
+}
+.animate-ping-slow {
+  animation: ping-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+/* ─────────────────────────────────────────────────────────────────────── */
+
+/* ── Micro Animations ───────────────────────────────────────────────── */
+
+/* Logo: shield glow + icon spin on hover */
+.logo-root:hover .logo-shield {
+  box-shadow: 0 0 0 4px oklch(0.62 0.19 264 / 20%), 0 0 24px oklch(0.62 0.19 264 / 40%);
+  transform: scale(1.08);
+}
+.logo-root:hover .logo-icon {
+  transform: rotate(-8deg) scale(1.1);
+}
+
+/* Button: lift + glow on hover (applied to gradient-brand buttons) */
+button.gradient-brand:not(:disabled):hover,
+a.gradient-brand:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px oklch(0.62 0.19 264 / 35%);
+}
+button.gradient-brand:not(:disabled):active,
+a.gradient-brand:active {
+  transform: translateY(0px);
+}
+
+/* Card fade-in via scroll */
+@keyframes card-fade-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.glass-panel {
+  animation: card-fade-up 0.5s ease-out both;
+}
+
+/* Stagger cards inside grids */
+.grid > .glass-panel:nth-child(1) { animation-delay: 0ms; }
+.grid > .glass-panel:nth-child(2) { animation-delay: 80ms; }
+.grid > .glass-panel:nth-child(3) { animation-delay: 160ms; }
+.grid > .glass-panel:nth-child(4) { animation-delay: 240ms; }
+
+/* Quick-action links: icon slide on hover */
+.group:hover .group-hover\:translate-x-0\.5 {
+  transform: translateX(3px);
+}
+
+/* Progress bar fill animation */
+@keyframes progress-fill {
+  from { width: 0% !important; }
+  to   { /* inherits inline width */ }
+}
+
+/* Stat card icon spin on hover */
+.stat-card:hover .stat-icon {
+  animation: icon-bounce 0.4s ease-out;
+}
+@keyframes icon-bounce {
+  0%   { transform: scale(1)    rotate(0deg); }
+  40%  { transform: scale(1.18) rotate(8deg); }
+  70%  { transform: scale(0.95) rotate(-4deg); }
+  100% { transform: scale(1.1)  rotate(6deg); }
+}
+
+/* Processing steps: pulse when active */
+@keyframes step-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.62 0.19 264 / 0%); }
+  50%       { box-shadow: 0 0 0 8px oklch(0.62 0.19 264 / 20%); }
+}
+.step-active {
+  animation: step-pulse 1.5s ease-in-out infinite;
+}
+
+/* Score gauge: outer glow breathe */
+@keyframes gauge-breathe {
+  0%, 100% { opacity: 0.15; }
+  50%       { opacity: 0.30; }
+}
+
+/* Table rows: subtle slide in */
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+tbody tr {
+  animation: row-in 0.3s ease-out both;
+}
+tbody tr:nth-child(1) { animation-delay: 50ms; }
+tbody tr:nth-child(2) { animation-delay: 100ms; }
+tbody tr:nth-child(3) { animation-delay: 150ms; }
+tbody tr:nth-child(4) { animation-delay: 200ms; }
+tbody tr:nth-child(5) { animation-delay: 250ms; }
+
+/* VerdictBadge pop-in */
+@keyframes badge-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+[data-slot="verdict-badge"] {
+  animation: badge-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ══ Universal Hover Glow Border ══════════════════════════════════════════
+   Every clickable / interactive surface gets a glowing border on hover.
+   ══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --glow-shadow:        0 0 0 1px oklch(0.62 0.19 264 / 50%), 0 0 14px oklch(0.62 0.19 264 / 25%);
+  --glow-shadow-strong: 0 0 0 1.5px oklch(0.62 0.19 264 / 70%), 0 0 22px oklch(0.62 0.19 264 / 38%);
+}
+
+/* Cards */
+.glass-panel:hover,
+[data-slot="card"]:hover {
+  box-shadow: var(--glow-shadow);
+  border-color: oklch(0.62 0.19 264 / 40%) !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+/* All buttons */
+[data-slot="button"]:not(:disabled):hover {
+  box-shadow: var(--glow-shadow);
+  transition: box-shadow 0.2s ease, transform 0.15s ease;
+}
+[data-slot="button"].gradient-brand:not(:disabled):hover {
+  box-shadow: var(--glow-shadow-strong);
+}
+
+/* Sidebar nav links */
+aside nav a:hover {
+  box-shadow: var(--glow-shadow);
+  border-radius: 0.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Topbar links & icon buttons */
+header a:hover,
+header button:hover {
+  box-shadow: var(--glow-shadow);
+  border-radius: 0.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Quick-action cards / link groups */
+a.group:hover,
+button.group:hover {
+  box-shadow: var(--glow-shadow);
+  border-color: oklch(0.62 0.19 264 / 40%) !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Table rows */
+tbody tr:hover {
+  box-shadow: inset 0 0 0 1px oklch(0.62 0.19 264 / 28%);
+  transition: box-shadow 0.15s ease;
+}
+tbody tr:hover td {
+  background: oklch(0.62 0.19 264 / 5%);
+}
+
+/* Upload box */
+.upload-box:hover {
+  box-shadow: var(--glow-shadow-strong);
+}
+
+/* Generic glass / rounded cards (landing sections) */
+.glass:hover {
+  box-shadow: var(--glow-shadow);
+  border-color: oklch(0.62 0.19 264 / 35%) !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* Pivot tab labels */
+.pivot-label:hover {
+  box-shadow: var(--glow-shadow);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Dropdown menu items */
+[role="menuitem"]:hover {
+  box-shadow: inset 0 0 0 1px oklch(0.62 0.19 264 / 25%);
+  transition: box-shadow 0.15s ease;
+}
+
+/* Inputs & search */
+input:focus,
+input:hover:not([type="radio"]):not([type="checkbox"]):not([type="file"]) {
+  box-shadow: var(--glow-shadow);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Logo */
+.logo-root:hover {
+  filter: drop-shadow(0 0 10px oklch(0.62 0.19 264 / 55%));
+  transition: filter 0.25s ease;
+}
+
+/* Accordion / FAQ */
+[data-slot="accordion-item"]:hover {
+  box-shadow: var(--glow-shadow);
+  border-color: oklch(0.62 0.19 264 / 35%) !important;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+/* ══════════════════════════════════════════════════════════════════════ */

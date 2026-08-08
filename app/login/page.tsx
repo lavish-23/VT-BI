@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { AuthShell } from '@/components/auth/auth-shell'
 import { GoogleButton } from '@/components/auth/google-button'
@@ -34,8 +34,8 @@ export default function LoginPage() {
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Work email</Label>
-          <Input id="email" type="email" placeholder="you@company.com" required />
+          <Label htmlFor="email">Gmail</Label>
+          <Input id="email" type="email" placeholder="you@company.com" required defaultValue="alex@northbank.com" />
         </div>
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -50,6 +50,7 @@ export default function LoginPage() {
               type={show ? 'text' : 'password'}
               placeholder="••••••••"
               required
+              defaultValue="password"
               className="pr-10"
             />
             <button
@@ -83,13 +84,6 @@ export default function LoginPage() {
           Create one
         </Link>
       </p>
-
-      <div className="mt-4 text-center">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
-          <ArrowLeft className="size-3.5" />
-          Back to home
-        </Link>
-      </div>
     </AuthShell>
   )
 }

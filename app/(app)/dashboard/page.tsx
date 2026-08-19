@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'motion/react'
@@ -50,6 +50,27 @@ const highlights = [
 ]
 
 export default function DashboardPage() {
+  const [firstName, setFirstName] = useState('')
+  useEffect(() => {
+    async function loadUser() {
+      try {
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          cache: 'no-store',
+        })
+
+        const data = await response.json()
+
+        if (response.ok && data.success) {
+          setFirstName(data.user.firstName)
+        }
+      } catch (error) {
+        console.error('Failed to load user:', error)
+      }
+    }
+
+    loadUser()
+  }, [])
   const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
 
@@ -64,7 +85,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Welcome */}
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back, Alex 👋</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {firstName || 'there'} 👋</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Verify another file with AI-powered Digital Trust Verification.
         </p>

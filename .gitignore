@@ -7,7 +7,21 @@ __v0_jsx-dev-runtime.ts
 .vercel/
 
 # Environment variables
-.env*.local
+.env.*.local
+.env.local
+.env
+
+#Dependencies
+node_modules/
+#
+#Next.js
+.next/
+
+#Python
+__pycache__/
+*.pyc
+.venv/
+venv/
 
 # Common ignores
 node_modules

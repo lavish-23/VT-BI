@@ -13,20 +13,65 @@ import { Label } from '@/components/ui/label'
 
 export default function SignupPage() {
   const router = useRouter()
+
   const [loading, setLoading] = useState(false)
 
-  function onSubmit(e: React.FormEvent) {
+  const [form, setForm] = useState({
+    firstName: '',
+    lastName: '',
+    organization: '',
+    email: '',
+    password: '',
+  })
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const { id, value } = e.target
+
+    setForm((prev) => ({
+      ...prev,
+      [id]: value,
+    }))
+  }
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     setLoading(true)
-    setTimeout(() => {
-      toast.success('Account created — welcome to VeriTrust AI')
-      router.push('/dashboard')
-    }, 900)
+
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(form),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.message || 'Unable to create account')
+        return
+      }
+
+      toast.success('Account created successfully!')
+
+      router.push('/login')
+    } catch (error) {
+      console.error('Signup request failed:', error)
+
+      toast.error('Unable to connect to the server. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <AuthShell>
-      <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">
+        Create your account
+      </h1>
+
       <p className="mt-1.5 text-sm text-muted-foreground">
         Start verifying digital content in minutes.
       </p>
@@ -34,30 +79,76 @@ export default function SignupPage() {
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="first">First name</Label>
-            <Input id="first" placeholder="First name" required />
+            <Label htmlFor="firstName">First name</Label>
+
+            <Input
+              id="firstName"
+              placeholder="First name"
+              value={form.firstName}
+              onChange={handleChange}
+              required
+            />
           </div>
+
           <div className="space-y-2">
-            <Label htmlFor="last">Last name</Label>
-            <Input id="last" placeholder="Last name" required />
+            <Label htmlFor="lastName">Last name</Label>
+
+            <Input
+              id="lastName"
+              placeholder="Last name"
+              value={form.lastName}
+              onChange={handleChange}
+              required
+            />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="org">Organization</Label>
-          <Input id="org" placeholder="Your organization" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="email">Work email</Label>
-          <Input id="email" type="email" placeholder="you@company.com" required />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" placeholder="Create a strong password" required />
         </div>
 
-        <Button type="submit" disabled={loading} className="w-full gradient-brand text-primary-foreground">
+        <div className="space-y-2">
+          <Label htmlFor="organization">Organization</Label>
+
+          <Input
+            id="organization"
+            placeholder="Your organization"
+            value={form.organization}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email">Work email</Label>
+
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@company.com"
+            value={form.email}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+
+          <Input
+            id="password"
+            type="password"
+            placeholder="Create a strong password"
+            value={form.password}
+            onChange={handleChange}
+            minLength={8}
+            required
+          />
+        </div>
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className="w-full gradient-brand text-primary-foreground"
+        >
           {loading && <Loader2 className="size-4 animate-spin" />}
-          Create account
+          {loading ? 'Creating account...' : 'Create account'}
         </Button>
       </form>
 
@@ -71,13 +162,19 @@ export default function SignupPage() {
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Already have an account?{' '}
-        <Link href="/login" className="font-medium text-primary hover:underline">
+        <Link
+          href="/login"
+          className="font-medium text-primary hover:underline"
+        >
           Sign in
         </Link>
       </p>
 
       <div className="mt-4 text-center">
-        <Link href="/" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
           <ArrowLeft className="size-3.5" />
           Back to home
         </Link>

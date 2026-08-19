@@ -13,21 +13,58 @@ import { Label } from '@/components/ui/label'
 
 export default function LoginPage() {
   const router = useRouter()
+
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  function onSubmit(e: React.FormEvent) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     setLoading(true)
-    setTimeout(() => {
-      toast.success('Welcome back to VeriTrust AI')
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        toast.error(data.message || 'Invalid email or password')
+        return
+      }
+
+      toast.success(`Welcome back, ${data.user.firstName}!`)
+
       router.push('/dashboard')
-    }, 900)
+      router.refresh()
+    } catch (error) {
+      console.error('Login request failed:', error)
+
+      toast.error(
+        'Unable to connect to the server. Please try again.'
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
     <AuthShell>
-      <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">
+        Sign in
+      </h1>
+
       <p className="mt-1.5 text-sm text-muted-foreground">
         Access your verification workspace.
       </p>
@@ -35,44 +72,79 @@ export default function LoginPage() {
       <form onSubmit={onSubmit} className="mt-8 space-y-4">
         <div className="space-y-2">
           <Label htmlFor="email">Gmail</Label>
-          <Input id="email" type="email" placeholder="you@company.com" required defaultValue="alex@northbank.com" />
+
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
-            <Link href="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+            <Label htmlFor="password">
+              Password
+            </Label>
+
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-primary hover:underline"
+            >
               Forgot password?
             </Link>
           </div>
+
           <div className="relative">
             <Input
               id="password"
               type={show ? 'text' : 'password'}
               placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               required
-              defaultValue="password"
               className="pr-10"
             />
+
             <button
               type="button"
               onClick={() => setShow((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              aria-label={show ? 'Hide password' : 'Show password'}
+              aria-label={
+                show
+                  ? 'Hide password'
+                  : 'Show password'
+              }
             >
-              {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              {show ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
             </button>
           </div>
         </div>
 
-        <Button type="submit" disabled={loading} className="w-full gradient-brand text-primary-foreground">
-          {loading && <Loader2 className="size-4 animate-spin" />}
-          Sign in
+        <Button
+          type="submit"
+          disabled={loading}
+          className="w-full gradient-brand text-primary-foreground"
+        >
+          {loading && (
+            <Loader2 className="size-4 animate-spin" />
+          )}
+
+          {loading ? 'Signing in...' : 'Sign in'}
         </Button>
       </form>
 
       <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border" />
+
         OR
+
         <span className="h-px flex-1 bg-border" />
       </div>
 
@@ -80,7 +152,10 @@ export default function LoginPage() {
 
       <p className="mt-8 text-center text-sm text-muted-foreground">
         Don&apos;t have an account?{' '}
-        <Link href="/signup" className="font-medium text-primary hover:underline">
+        <Link
+          href="/signup"
+          className="font-medium text-primary hover:underline"
+        >
           Create one
         </Link>
       </p>

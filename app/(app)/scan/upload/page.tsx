@@ -19,14 +19,53 @@ const perks = [
 
 export default function ScanUploadPage() {
   const router = useRouter()
-  const [file, setFile] = useState<File | null>(null)
 
-  const handleVerify = () => {
-    if (!file) return
-    const type = detectType(file)
-    router.push(
-      `/processing?file=${encodeURIComponent(file.name)}&type=${encodeURIComponent(type)}`,
-    )
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const handleVerify = async () => {
+    if (!file || uploading) return
+
+    try {
+      setUploading(true)
+
+      const type = detectType(file)
+
+      const formData = new FormData()
+
+      formData.append('file', file)
+      formData.append('type', type)
+
+      const response = await fetch('/api/scans', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      })
+
+      const data = await response.json()
+
+      if (!response.ok || !data.success) {
+        throw new Error(
+          data.message || 'Failed to create scan'
+        )
+      }
+
+      console.log('Scan created:', data.scan)
+
+      router.push(
+        `/processing?scanId=${encodeURIComponent(data.scanId)}&file=${encodeURIComponent(file.name)}&type=${encodeURIComponent(type)}`
+      )
+    } catch (error) {
+      console.error('Upload failed:', error)
+
+      alert(
+        error instanceof Error
+          ? error.message
+          : 'Failed to upload file'
+      )
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
@@ -38,7 +77,10 @@ export default function ScanUploadPage() {
 
       {/* Upload area */}
       <div className="mx-auto max-w-2xl space-y-5">
-        <UploadBox onFileSelect={setFile} className="min-h-[280px]" />
+        <UploadBox
+          onFileSelect={setFile}
+          className="min-h-[280px]"
+        />
 
         {/* Perks row */}
         <div className="flex flex-wrap justify-center gap-4">
@@ -57,10 +99,14 @@ export default function ScanUploadPage() {
           size="lg"
           className="gradient-brand w-full text-primary-foreground"
           onClick={handleVerify}
-          disabled={!file}
+          disabled={!file || uploading}
         >
           <ScanLine className="size-4" />
-          Verify Authenticity
+
+          {uploading
+            ? 'Uploading...'
+            : 'Verify Authenticity'}
+
           <ArrowRight className="size-4" />
         </Button>
       </div>
@@ -68,12 +114,20 @@ export default function ScanUploadPage() {
       {/* Recent reports */}
       <Card className="glass-panel">
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">Recent Reports</CardTitle>
-          <Button variant="ghost" size="sm" render={<Link href="/history" />}>
+          <CardTitle className="text-base">
+            Recent Reports
+          </CardTitle>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            render={<Link href="/history" />}
+          >
             View all
             <ArrowRight className="size-3.5" />
           </Button>
         </CardHeader>
+
         <CardContent>
           <ScansTable rows={scanHistory.slice(0, 5)} />
         </CardContent>
@@ -85,8 +139,27 @@ export default function ScanUploadPage() {
 function detectType(file: File): string {
   const mime = file.type
   const name = file.name.toLowerCase()
-  if (mime.startsWith('image/') || /\.(png|jpg|jpeg|gif|webp|svg|bmp)$/.test(name)) return 'image'
-  if (mime.startsWith('video/') || /\.(mp4|mov|avi|mkv|webm|flv)$/.test(name)) return 'video'
-  if (mime.startsWith('audio/') || /\.(mp3|wav|ogg|aac|flac|m4a)$/.test(name)) return 'audio'
+
+  if (
+    mime.startsWith('image/') ||
+    /\.(png|jpg|jpeg|gif|webp|svg|bmp)$/.test(name)
+  ) {
+    return 'image'
+  }
+
+  if (
+    mime.startsWith('video/') ||
+    /\.(mp4|mov|avi|mkv|webm|flv)$/.test(name)
+  ) {
+    return 'video'
+  }
+
+  if (
+    mime.startsWith('audio/') ||
+    /\.(mp3|wav|ogg|aac|flac|m4a)$/.test(name)
+  ) {
+    return 'audio'
+  }
+
   return 'document'
 }

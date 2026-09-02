@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import mongoose from 'mongoose'
 import { connectDB } from '@/lib/mongodb'
 import { verifySession } from '@/lib/auth'
 import Scan from '@/models/Scan'
@@ -12,12 +13,7 @@ export async function GET(
   }
 ) {
   try {
-    // -----------------------------------------
-    // 1. Check authentication
-    // -----------------------------------------
-
-    const token =
-      request.cookies.get('veritrust_session')?.value
+    const token = request.cookies.get('veritrust_session')?.value
 
     if (!token) {
       return NextResponse.json(
@@ -41,10 +37,6 @@ export async function GET(
       )
     }
 
-    // -----------------------------------------
-    // 2. Get scan ID
-    // -----------------------------------------
-
     const { scanId } = await context.params
 
     if (!scanId) {
@@ -57,19 +49,17 @@ export async function GET(
       )
     }
 
-    // -----------------------------------------
-    // 3. Connect MongoDB
-    // -----------------------------------------
-
     await connectDB()
 
-    // -----------------------------------------
-    // 4. Find scan belonging to current user
-    // -----------------------------------------
+    const isObjectId = mongoose.Types.ObjectId.isValid(scanId)
 
+    // Lookup either by custom scanId ("SCN-XXXX") or MongoDB _id
     const scan = await Scan.findOne({
-      scanId,
       userId: session.userId,
+      $or: [
+        { scanId: scanId },
+        ...(isObjectId ? [{ _id: new mongoose.Types.ObjectId(scanId) }] : []),
+      ],
     }).lean()
 
     if (!scan) {
@@ -82,51 +72,28 @@ export async function GET(
       )
     }
 
-    // -----------------------------------------
-    // 5. Return scan
-    // -----------------------------------------
-
     return NextResponse.json({
       success: true,
-
       scan: {
         id: scan._id.toString(),
-
         scanId: scan.scanId,
-
         fileName: scan.fileName,
-
         fileType: scan.fileType,
-
         fileSize: scan.fileSize,
-
         mimeType: scan.mimeType,
-
         fileUrl: scan.fileUrl,
-
         status: scan.status,
-
         score: scan.score,
-
         verdict: scan.verdict,
-
         threat: scan.threat,
-
         action: scan.action,
-
-        analysisCards:
-          scan.analysisCards || [],
-
+        analysisCards: scan.analysisCards || [],
         createdAt: scan.createdAt,
-
         updatedAt: scan.updatedAt,
       },
     })
   } catch (error) {
-    console.error(
-      'GET /api/scans/[scanId] error:',
-      error
-    )
+    console.error('GET /api/scans/[scanId] error:', error)
 
     return NextResponse.json(
       {

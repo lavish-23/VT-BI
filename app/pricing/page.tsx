@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 
 const freePlan = {
   name: 'Free',
-  price: '$0',
+  price: '₹0',
   period: 'month',
   badge: 'Free',
   features: [
@@ -22,7 +22,7 @@ const freePlan = {
 
 const premiumPlan = {
   name: 'Premium',
-  price: '$29',
+  price: '₹299',
   period: 'month',
   badge: 'Most Popular',
   features: [

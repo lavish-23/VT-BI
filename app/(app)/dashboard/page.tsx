@@ -18,13 +18,15 @@ import {
   Zap,
   Lock,
   Globe,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { UploadBox } from '@/components/upload-box'
 import { MediaIcon, VerdictBadge, scoreColor } from '@/components/app/media-bits'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { scanHistory, mediaLabels } from '@/lib/mock-data'
+import { mediaLabels } from '@/lib/mock-data'
+import type { ScanRecord } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 
 const FREE_REMAINING = 2
@@ -39,9 +41,6 @@ function detectType(file: File): string {
   return 'document'
 }
 
-const SHOW_EMPTY = false
-const recentRows = SHOW_EMPTY ? [] : scanHistory.slice(0, 5)
-
 const highlights = [
   { icon: Zap, label: 'Instant AI Analysis', desc: 'Results in seconds across all media types' },
   { icon: Lock, label: 'Tamper Detection', desc: 'Catches deepfakes, clones & metadata edits' },
@@ -51,28 +50,47 @@ const highlights = [
 
 export default function DashboardPage() {
   const [firstName, setFirstName] = useState('')
+  const [recentRows, setRecentRows] = useState<ScanRecord[]>([])
+  const [loadingScans, setLoadingScans] = useState(true)
+  const router = useRouter()
+  const [file, setFile] = useState<File | null>(null)
+
   useEffect(() => {
-    async function loadUser() {
+    async function loadDashboardData() {
       try {
-        const response = await fetch('/api/auth/me', {
+        // Fetch current user
+        const userRes = await fetch('/api/auth/me', {
           credentials: 'include',
           cache: 'no-store',
         })
-
-        const data = await response.json()
-
-        if (response.ok && data.success) {
-          setFirstName(data.user.firstName)
+        const userData = await userRes.json()
+        if (userRes.ok && userData.success) {
+          setFirstName(userData.user.firstName)
         }
       } catch (error) {
         console.error('Failed to load user:', error)
       }
+
+      try {
+        // Fetch recent scans from MongoDB
+        const scansRes = await fetch('/api/scans/history', {
+          credentials: 'include',
+          cache: 'no-store',
+        })
+        if (scansRes.ok) {
+          const scansData = await scansRes.json()
+          // Take top 5 recent scans
+          setRecentRows((scansData.scans || []).slice(0, 5))
+        }
+      } catch (error) {
+        console.error('Failed to load recent scans:', error)
+      } finally {
+        setLoadingScans(false)
+      }
     }
 
-    loadUser()
+    loadDashboardData()
   }, [])
-  const router = useRouter()
-  const [file, setFile] = useState<File | null>(null)
 
   const handleVerify = () => {
     if (!file) return
@@ -316,87 +334,91 @@ export default function DashboardPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, delay: 0.3 }}
       >
-      <Card className="glass-panel">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">Recent Verifications</CardTitle>
-          <Button variant="ghost" size="sm" render={<Link href="/history" />}>
-            View All History
-            <ArrowRight className="size-3.5" />
-          </Button>
-        </CardHeader>
-        <CardContent>
-          {recentRows.length === 0 ? (
-            <div className="flex flex-col items-center gap-4 py-14 text-center">
-              <div className="flex size-16 items-center justify-center rounded-2xl bg-secondary/60">
-                <FileText className="size-8 text-muted-foreground" strokeWidth={1.5} />
+        <Card className="glass-panel">
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle className="text-base">Recent Verifications</CardTitle>
+            <Button variant="ghost" size="sm" render={<Link href="/history" />}>
+              View All History
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {loadingScans ? (
+              <div className="flex h-36 items-center justify-center">
+                <Loader2 className="size-7 animate-spin text-muted-foreground" />
               </div>
-              <div>
-                <p className="font-medium text-foreground">No verifications yet</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Upload your first file to check its authenticity.
-                </p>
+            ) : recentRows.length === 0 ? (
+              <div className="flex flex-col items-center gap-4 py-14 text-center">
+                <div className="flex size-16 items-center justify-center rounded-2xl bg-secondary/60">
+                  <FileText className="size-8 text-muted-foreground" strokeWidth={1.5} />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground">No verifications yet</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Upload your first file to check its authenticity.
+                  </p>
+                </div>
+                <Button
+                  className="gradient-brand text-primary-foreground"
+                  render={<Link href="/scan/upload" />}
+                >
+                  <UploadCloud className="size-4" />
+                  Upload Your First File
+                </Button>
               </div>
-              <Button
-                className="gradient-brand text-primary-foreground"
-                render={<Link href="/scan/upload" />}
-              >
-                <UploadCloud className="size-4" />
-                Upload Your First File
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>File Name</TableHead>
-                  <TableHead>File Type</TableHead>
-                  <TableHead className="hidden sm:table-cell">Date &amp; Time</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">View Report</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentRows.map((r) => (
-                  <TableRow key={r.id} className="group cursor-pointer">
-                    <TableCell>
-                      <span className="font-medium transition-colors group-hover:text-primary">
-                        {r.name}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-                        <MediaIcon type={r.type} />
-                        <span className="hidden lg:inline">{mediaLabels[r.type]}</span>
-                      </span>
-                    </TableCell>
-                    <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground sm:table-cell">
-                      {r.date}
-                    </TableCell>
-                    <TableCell>
-                      <span className={cn('font-semibold tabular-nums', scoreColor(r.score))}>
-                        {r.score}%
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <VerdictBadge verdict={r.verdict} />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link
-                        href={`/report?file=${encodeURIComponent(r.name)}&type=${r.type}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                      >
-                        <Eye className="size-3.5" />
-                        View Report
-                      </Link>
-                    </TableCell>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead>File Name</TableHead>
+                    <TableHead>File Type</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date &amp; Time</TableHead>
+                    <TableHead>Score</TableHead>
+                    <TableHead>Verdict</TableHead>
+                    <TableHead className="text-right">View Report</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {recentRows.map((r) => (
+                    <TableRow key={r.id} className="group cursor-pointer">
+                      <TableCell>
+                        <span className="font-medium transition-colors group-hover:text-primary">
+                          {r.name}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                          <MediaIcon type={r.type} />
+                          <span className="hidden lg:inline">{mediaLabels[r.type]}</span>
+                        </span>
+                      </TableCell>
+                      <TableCell className="hidden whitespace-nowrap text-sm text-muted-foreground sm:table-cell">
+                        {r.date}
+                      </TableCell>
+                      <TableCell>
+                        <span className={cn('font-semibold tabular-nums', scoreColor(r.score))}>
+                          {r.score}%
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <VerdictBadge verdict={r.verdict} />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          href={`/report?id=${r.id}`}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        >
+                          <Eye className="size-3.5" />
+                          View Report
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
     </div>
   )

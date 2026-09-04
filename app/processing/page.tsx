@@ -291,8 +291,19 @@ function ProcessingContent() {
             <svg
               width="80"
               height="80"
-              className="-rotate-90"
+              viewBox="0 0 80 80"
+              className="-rotate-90 overflow-visible"
             >
+              <defs>
+                <filter id="smooth-process-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+
               <circle
                 cx="40"
                 cy="40"
@@ -333,10 +344,7 @@ function ProcessingContent() {
                   duration: 0.6,
                   ease: 'easeOut',
                 }}
-                style={{
-                  filter:
-                    'drop-shadow(0 0 6px oklch(0.6 0.24 260))',
-                }}
+                filter="url(#smooth-process-glow)"
               />
             </svg>
 

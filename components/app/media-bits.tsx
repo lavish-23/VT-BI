@@ -1,55 +1,70 @@
-import { ImageIcon, Video, AudioLines, FileText, Layers } from 'lucide-react'
+import React from 'react'
+import {
+  ImageIcon,
+  Video,
+  Music,
+  FileText,
+  FileSpreadsheet,
+  File,
+  LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { MediaType, Verdict } from '@/lib/mock-data'
-import { verdictLabels } from '@/lib/mock-data'
 
-const icons: Record<MediaType, typeof ImageIcon> = {
+export type Verdict = 'authentic' | 'suspicious' | 'deepfake'
+
+const icons: Record<string, LucideIcon> = {
   image: ImageIcon,
   video: Video,
-  audio: AudioLines,
+  audio: Music,
   document: FileText,
-  'cross-modal': Layers,
+  pdf: FileText,
+  'cross-modal': FileSpreadsheet,
 }
 
-export function MediaIcon({
-  type,
-  className,
-}: {
-  type: MediaType
-  className?: string
-}) {
-  const Icon = icons[type]
-  return <Icon className={cn('size-4', className)} />
+export function MediaIcon({ type, className }: { type?: string; className?: string }) {
+  const normalizedType = (type || '').toLowerCase().trim()
+  const IconComponent = icons[normalizedType] || File
+
+  return <IconComponent className={cn('size-4', className)} />
 }
 
-export function verdictColor(v: Verdict) {
-  if (v === 'authentic') return 'text-success'
-  if (v === 'deepfake') return 'text-destructive'
-  return 'text-warning'
-}
-
-export function VerdictBadge({ verdict }: { verdict: Verdict }) {
-  const styles: Record<Verdict, string> = {
-    authentic: 'bg-success/12 text-success border-success/25',
-    suspicious: 'bg-warning/12 text-warning border-warning/25',
-    deepfake: 'bg-destructive/12 text-destructive border-destructive/25',
+export function verdictColor(v: Verdict | string) {
+  switch (v) {
+    case 'authentic':
+      return 'text-emerald-500'
+    case 'suspicious':
+      return 'text-amber-500'
+    case 'deepfake':
+      return 'text-rose-500'
+    default:
+      return 'text-muted-foreground'
   }
-  return (
-    <span
-      data-slot="verdict-badge"
-      className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium',
-        styles[verdict],
-      )}
-    >
-      <span className="size-1.5 rounded-full bg-current" />
-      {verdictLabels[verdict]}
-    </span>
-  )
 }
 
 export function scoreColor(score: number) {
-  if (score >= 70) return 'text-success'
-  if (score >= 45) return 'text-warning'
-  return 'text-destructive'
+  if (score >= 70) return 'text-emerald-500'
+  if (score >= 45) return 'text-amber-500'
+  return 'text-rose-500'
+}
+
+export function VerdictBadge({ verdict, className }: { verdict: Verdict | string; className?: string }) {
+  const v = (verdict || '').toLowerCase()
+  const styles =
+    v === 'authentic'
+      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+      : v === 'suspicious'
+      ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
+      : 'border-rose-500/30 bg-rose-500/10 text-rose-500'
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize',
+        styles,
+        className
+      )}
+    >
+      {verdict}
+    </span>
+  )
 }

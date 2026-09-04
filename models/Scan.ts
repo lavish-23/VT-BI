@@ -1,22 +1,4 @@
-import mongoose, { Schema, Model } from 'mongoose'
-
-export type MediaType =
-  | 'image'
-  | 'video'
-  | 'audio'
-  | 'document'
-  | 'cross-modal'
-
-export type ScanStatus =
-  | 'pending'
-  | 'processing'
-  | 'completed'
-  | 'failed'
-
-export type Verdict =
-  | 'authentic'
-  | 'suspicious'
-  | 'deepfake'
+import mongoose, { Schema, Document } from 'mongoose'
 
 export interface IAnalysisCard {
   key: string
@@ -25,161 +7,61 @@ export interface IAnalysisCard {
   ok: boolean
 }
 
-export interface IScan {
+export interface IScan extends Document {
   userId: mongoose.Types.ObjectId
-
   scanId: string
-
   fileName: string
-  fileType: MediaType
+  fileType: string
   fileSize: number
   mimeType: string
-
-  status: ScanStatus
-
+  status: string
   score?: number
-  verdict?: Verdict
-
+  verdict?: string
   threat?: string
   action?: string
-
-  analysisCards?: IAnalysisCard[]
-
+  analysisCards: IAnalysisCard[]
+  visualArtifacts?: {
+    ela_map?: string
+    fft_spectrum?: string
+  }
   fileUrl?: string
-
   errorMessage?: string
-
   createdAt: Date
   updatedAt: Date
 }
 
 const AnalysisCardSchema = new Schema<IAnalysisCard>(
   {
-    key: {
-      type: String,
-      required: true,
-    },
-
-    label: {
-      type: String,
-      required: true,
-    },
-
-    detail: {
-      type: String,
-      required: true,
-    },
-
-    ok: {
-      type: Boolean,
-      required: true,
-    },
+    key: { type: String, required: true },
+    label: { type: String, required: true },
+    detail: { type: String, required: true },
+    ok: { type: Boolean, required: true },
   },
-  {
-    _id: false,
-  }
+  { _id: false }
 )
 
 const ScanSchema = new Schema<IScan>(
   {
-    userId: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true,
-      index: true,
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    scanId: { type: String, required: true, unique: true },
+    fileName: { type: String, required: true },
+    fileType: { type: String, required: true },
+    fileSize: { type: Number, required: true },
+    mimeType: { type: String, required: true },
+    status: { type: String, default: 'completed' },
+    score: { type: Number },
+    verdict: { type: String },
+    threat: { type: String },
+    action: { type: String },
+    analysisCards: { type: [AnalysisCardSchema], default: [] },
+    visualArtifacts: {
+      ela_map: { type: String },
+      fft_spectrum: { type: String },
     },
-
-    scanId: {
-      type: String,
-      required: true,
-      unique: true,
-      index: true,
-    },
-
-    fileName: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-
-    fileType: {
-      type: String,
-      enum: [
-        'image',
-        'video',
-        'audio',
-        'document',
-        'cross-modal',
-      ],
-      required: true,
-    },
-
-    fileSize: {
-      type: Number,
-      required: true,
-    },
-
-    mimeType: {
-      type: String,
-      required: true,
-    },
-
-    status: {
-      type: String,
-      enum: [
-        'pending',
-        'processing',
-        'completed',
-        'failed',
-      ],
-      default: 'pending',
-      required: true,
-      index: true,
-    },
-
-    score: {
-      type: Number,
-      min: 0,
-      max: 100,
-    },
-
-    verdict: {
-      type: String,
-      enum: [
-        'authentic',
-        'suspicious',
-        'deepfake',
-      ],
-    },
-
-    threat: {
-      type: String,
-    },
-
-    action: {
-      type: String,
-    },
-
-    analysisCards: {
-      type: [AnalysisCardSchema],
-      default: [],
-    },
-
-    fileUrl: {
-      type: String,
-    },
-
-    errorMessage: {
-      type: String,
-    },
+    fileUrl: { type: String },
+    errorMessage: { type: String },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 )
 
-const Scan: Model<IScan> =
-  mongoose.models.Scan ||
-  mongoose.model<IScan>('Scan', ScanSchema)
-
-export default Scan
+export default mongoose.models.Scan || mongoose.model<IScan>('Scan', ScanSchema)

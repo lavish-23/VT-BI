@@ -1,106 +1,67 @@
 import { NextRequest, NextResponse } from 'next/server'
-import mongoose from 'mongoose'
-import { connectDB } from '@/lib/mongodb'
-import { verifySession } from '@/lib/auth'
-import Scan from '@/models/Scan'
+import { MongoClient, ObjectId } from 'mongodb'
+
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
+
+let cachedClient: MongoClient | null = null
+
+async function getClient() {
+  if (!cachedClient) {
+    cachedClient = new MongoClient(MONGODB_URI)
+    await cachedClient.connect()
+  }
+  return cachedClient
+}
 
 export async function GET(
-  request: NextRequest,
-  context: {
-    params: Promise<{
-      scanId: string
-    }>
-  }
+  req: NextRequest,
+  context: { params: Promise<{ id?: string }> | { id?: string } }
 ) {
   try {
-    const token = request.cookies.get('veritrust_session')?.value
+    const resolvedParams = 'then' in context.params ? await context.params : context.params
+    let rawId = resolvedParams?.id
 
-    if (!token) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Not authenticated',
-        },
-        { status: 401 }
-      )
+    if (!rawId) {
+      const urlParts = req.nextUrl.pathname.split('/').filter(Boolean)
+      rawId = urlParts[urlParts.length - 1]
     }
 
-    const session = await verifySession(token)
+    rawId = decodeURIComponent(rawId || '').trim()
 
-    if (!session) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid or expired session',
-        },
-        { status: 401 }
-      )
+    if (!rawId || rawId === 'undefined' || rawId === 'null') {
+      return NextResponse.json({ success: false, message: 'Missing scan ID' }, { status: 400 })
     }
 
-    const { scanId } = await context.params
+    const client = await getClient()
+    const targetDbs = ['VeriTrust-AI', 'veritrust']
+    let scan: any = null
 
-    if (!scanId) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Scan ID is required',
-        },
-        { status: 400 }
-      )
+    const queryConditions: any[] = [
+      { scanId: rawId },
+      { scanId: rawId.toUpperCase() },
+      { id: rawId },
+    ]
+
+    if (ObjectId.isValid(rawId)) {
+      queryConditions.push({ _id: new ObjectId(rawId) })
     }
 
-    await connectDB()
-
-    const isObjectId = mongoose.Types.ObjectId.isValid(scanId)
-
-    // Lookup either by custom scanId ("SCN-XXXX") or MongoDB _id
-    const scan = await Scan.findOne({
-      userId: session.userId,
-      $or: [
-        { scanId: scanId },
-        ...(isObjectId ? [{ _id: new mongoose.Types.ObjectId(scanId) }] : []),
-      ],
-    }).lean()
+    for (const dbName of targetDbs) {
+      const db = client.db(dbName)
+      scan = await db.collection('scans').findOne({ $or: queryConditions })
+      if (scan) break
+    }
 
     if (!scan) {
       return NextResponse.json(
-        {
-          success: false,
-          message: 'Scan not found',
-        },
+        { success: false, message: `Scan '${rawId}' not found in database` },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({
-      success: true,
-      scan: {
-        id: scan._id.toString(),
-        scanId: scan.scanId,
-        fileName: scan.fileName,
-        fileType: scan.fileType,
-        fileSize: scan.fileSize,
-        mimeType: scan.mimeType,
-        fileUrl: scan.fileUrl,
-        status: scan.status,
-        score: scan.score,
-        verdict: scan.verdict,
-        threat: scan.threat,
-        action: scan.action,
-        analysisCards: scan.analysisCards || [],
-        createdAt: scan.createdAt,
-        updatedAt: scan.updatedAt,
-      },
-    })
-  } catch (error) {
-    console.error('GET /api/scans/[scanId] error:', error)
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Failed to fetch scan',
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: true, scan })
+  } catch (error: any) {
+    console.error('Fetch scan error:', error)
+    return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 })
   }
 }

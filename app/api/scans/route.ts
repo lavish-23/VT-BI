@@ -1,295 +1,89 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { connectDB } from '@/lib/mongodb'
-import { verifySession } from '@/lib/auth'
-import User from '@/models/User'
-import Scan, { MediaType } from '@/models/Scan'
-import cloudinary from '@/lib/cloudinary'
+import { MongoClient } from 'mongodb'
 
-function detectType(file: File): MediaType {
-  const mime = file.type
-  const name = file.name.toLowerCase()
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
+const DB_NAME = 'veritrust'
+const AI_ENGINE_URL = process.env.AI_ENGINE_URL || 'http://127.0.0.1:8000'
 
-  if (
-    mime.startsWith('image/') ||
-    /\.(png|jpg|jpeg|gif|webp|svg|bmp)$/.test(name)
-  ) {
-    return 'image'
+let cachedClient: MongoClient | null = null
+
+async function getDatabase() {
+  if (!cachedClient) {
+    cachedClient = new MongoClient(MONGODB_URI)
+    await cachedClient.connect()
   }
-
-  if (
-    mime.startsWith('video/') ||
-    /\.(mp4|mov|avi|mkv|webm|flv)$/.test(name)
-  ) {
-    return 'video'
-  }
-
-  if (
-    mime.startsWith('audio/') ||
-    /\.(mp3|wav|ogg|aac|flac|m4a)$/.test(name)
-  ) {
-    return 'audio'
-  }
-
-  return 'document'
+  return cachedClient.db(DB_NAME)
 }
 
-function generateScanId() {
-  const random = Math.floor(
-    1000 + Math.random() * 9000
-  )
-
-  return `SCN-${random}`
-}
-
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    // -----------------------------------------
-    // 1. Check authentication
-    // -----------------------------------------
+    const formData = await req.formData()
+    const file = formData.get('file') as File | null
 
-    const token =
-      request.cookies.get('veritrust_session')?.value
-
-    if (!token) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Not authenticated',
-        },
-        { status: 401 }
-      )
+    if (!file) {
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    const session = await verifySession(token)
+    // 1. Forward raw file to Python AI Service
+    const aiFormData = new FormData()
+    aiFormData.append('file', file)
 
-    if (!session) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Invalid or expired session',
-        },
-        { status: 401 }
-      )
-    }
-
-    // -----------------------------------------
-    // 2. Connect MongoDB
-    // -----------------------------------------
-
-    await connectDB()
-
-    // -----------------------------------------
-    // 3. Verify user
-    // -----------------------------------------
-
-    const user = await User.findById(
-      session.userId
-    )
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'User not found',
-        },
-        { status: 404 }
-      )
-    }
-
-    // -----------------------------------------
-    // 4. Read uploaded file
-    // -----------------------------------------
-
-    const formData = await request.formData()
-
-    const file = formData.get('file')
-
-    if (!(file instanceof File)) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'No file uploaded',
-        },
-        { status: 400 }
-      )
-    }
-
-    // -----------------------------------------
-    // 5. Detect media type
-    // -----------------------------------------
-
-    const submittedType =
-      formData.get('type')
-
-    const fileType: MediaType =
-      submittedType === 'image' ||
-      submittedType === 'video' ||
-      submittedType === 'audio' ||
-      submittedType === 'document' ||
-      submittedType === 'cross-modal'
-        ? submittedType
-        : detectType(file)
-
-    // -----------------------------------------
-    // 6. Generate unique scan ID
-    // -----------------------------------------
-
-    let scanId = generateScanId()
-
-    let existingScan = await Scan.findOne({
-      scanId,
-    })
-
-    while (existingScan) {
-      scanId = generateScanId()
-
-      existingScan = await Scan.findOne({
-        scanId,
-      })
-    }
-
-    // -----------------------------------------
-    // 7. Upload file to Cloudinary
-    // -----------------------------------------
-
-    const arrayBuffer =
-      await file.arrayBuffer()
-
-    const buffer = Buffer.from(arrayBuffer)
-
-    const uploadResult =
-      await new Promise<{
-        secure_url: string
-        public_id: string
-        resource_type: string
-      }>((resolve, reject) => {
-        const uploadStream =
-          cloudinary.uploader.upload_stream(
-            {
-              folder: 'veritrust/scans',
-
-              resource_type: 'auto',
-
-              public_id: scanId,
-            },
-
-            (error, result) => {
-              if (error) {
-                reject(error)
-                return
-              }
-
-              if (!result) {
-                reject(
-                  new Error(
-                    'Cloudinary upload returned no result'
-                  )
-                )
-                return
-              }
-
-              resolve({
-                secure_url:
-                  result.secure_url,
-
-                public_id:
-                  result.public_id,
-
-                resource_type:
-                  result.resource_type,
-              })
-            }
-          )
-
-        uploadStream.end(buffer)
+    let aiResult: any = null
+    try {
+      const aiResponse = await fetch(`${AI_ENGINE_URL}/analyze-file`, {
+        method: 'POST',
+        body: aiFormData,
       })
 
-    console.log(
-      'Cloudinary upload successful:',
-      {
-        scanId,
-        url: uploadResult.secure_url,
-        publicId: uploadResult.public_id,
-        resourceType:
-          uploadResult.resource_type,
+      if (!aiResponse.ok) {
+        throw new Error(`AI Engine returned HTTP ${aiResponse.status}`)
       }
-    )
+      aiResult = await aiResponse.json()
+    } catch (engineErr) {
+      console.error('Error contacting Python AI Service:', engineErr)
+      return NextResponse.json(
+        { error: 'AI Service offline or failed to analyze media' },
+        { status: 502 }
+      )
+    }
 
-    // -----------------------------------------
-    // 8. Create Scan document
-    // -----------------------------------------
+    // 2. Prepare payload using real values returned by Python
+    const scanId = `SCN-${Math.floor(1000 + Math.random() * 9000)}`
+    const isImage = file.type.startsWith('image/') || !file.type.includes('/')
+    const isVideo = file.type.startsWith('video/')
+    const isAudio = file.type.startsWith('audio/')
+    const isDoc = file.type.includes('pdf')
 
-    const scan = await Scan.create({
-      userId: user._id,
+    const fileType = isVideo ? 'video' : isAudio ? 'audio' : isDoc ? 'pdf' : 'image'
 
+    const scanRecord = {
       scanId,
-
       fileName: file.name,
-
       fileType,
-
       fileSize: file.size,
+      status: 'completed',
+      score: aiResult.score ?? 75,
+      verdict: aiResult.verdict ?? 'authentic',
+      threat: aiResult.threat ?? 'None Detected',
+      action: aiResult.action ?? 'Content Appears Safe',
+      analysisCards: aiResult.analysisCards || [],
+      visualArtifacts: aiResult.visualArtifacts || {},
+      createdAt: new Date().toISOString(),
+    }
 
-      mimeType:
-        file.type ||
-        'application/octet-stream',
+    // 3. Persist to MongoDB
+    const db = await getDatabase()
+    await db.collection('scans').insertOne(scanRecord)
 
-      status: 'pending',
-
-      fileUrl:
-        uploadResult.secure_url,
+    return NextResponse.json({
+      success: true,
+      scanId,
+      scan: scanRecord,
     })
-
-    // -----------------------------------------
-    // 9. Return scan information
-    // -----------------------------------------
-
+  } catch (error: any) {
+    console.error('Upload handler error:', error)
     return NextResponse.json(
-      {
-        success: true,
-
-        message:
-          'Scan created and file uploaded successfully',
-
-        scanId: scan.scanId,
-
-        scan: {
-          id: scan._id.toString(),
-
-          scanId: scan.scanId,
-
-          fileName: scan.fileName,
-
-          fileType: scan.fileType,
-
-          fileSize: scan.fileSize,
-
-          mimeType: scan.mimeType,
-
-          fileUrl: scan.fileUrl,
-
-          status: scan.status,
-
-          createdAt: scan.createdAt,
-        },
-      },
-      { status: 201 }
-    )
-  } catch (error) {
-    console.error(
-      'POST /api/scans error:',
-      error
-    )
-
-    return NextResponse.json(
-      {
-        success: false,
-
-        message:
-          error instanceof Error
-            ? error.message
-            : 'Failed to create scan',
-      },
+      { error: error.message || 'Internal Server Error' },
       { status: 500 }
     )
   }

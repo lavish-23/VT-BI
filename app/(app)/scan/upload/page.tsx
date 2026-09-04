@@ -1,165 +1,302 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { ScanLine, CheckCircle2, ArrowRight } from 'lucide-react'
+import {
+  UploadCloud,
+  Image as ImageIcon,
+  Video,
+  Music,
+  FileText,
+  Eye,
+  ArrowRight,
+} from 'lucide-react'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
-import { UploadBox } from '@/components/upload-box'
-import { ScansTable } from '@/components/app/scans-table'
-import { PageHeader } from '@/components/app/page-header'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { scanHistory } from '@/lib/mock-data'
+import { cn } from '@/lib/utils'
 
-const perks = [
-  'Unlimited Verifications',
-  'Cross-Modal Detection',
-  'Priority Processing',
-]
+interface RecentScan {
+  scanId?: string
+  id?: string
+  fileName?: string
+  name?: string
+  fileType?: string
+  type?: string
+  score: number
+  verdict: 'authentic' | 'suspicious' | 'deepfake'
+  threat: string
+  date: string
+}
 
-export default function ScanUploadPage() {
+export default function UploadPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [recentReports, setRecentReports] = useState<RecentScan[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(true)
+
+  useEffect(() => {
+    async function loadRecentHistory() {
+      try {
+        const res = await fetch('/api/scans/history', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.scans && Array.isArray(data.scans)) {
+            setRecentReports(data.scans.slice(0, 8))
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load recent history:', err)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+    loadRecentHistory()
+  }, [])
+
+  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0])
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0])
+    }
+  }
 
   const handleVerify = async () => {
-    if (!file || uploading) return
+    if (!file) {
+      toast.error('Please upload a file first.')
+      return
+    }
+
+    setIsUploading(true)
+    const formData = new FormData()
+    formData.append('file', file)
 
     try {
-      setUploading(true)
-
-      const type = detectType(file)
-
-      const formData = new FormData()
-
-      formData.append('file', file)
-      formData.append('type', type)
-
-      const response = await fetch('/api/scans', {
+      const response = await fetch('/api/scans/upload', {
         method: 'POST',
         body: formData,
-        credentials: 'include',
       })
 
-      const data = await response.json()
-
-      if (!response.ok || !data.success) {
+      const responseText = await response.text()
+      let data: any
+      try {
+        data = JSON.parse(responseText)
+      } catch {
         throw new Error(
-          data.message || 'Failed to create scan'
+          `Server returned HTTP ${response.status}: ${responseText || 'Empty response'}`
         )
       }
 
-      console.log('Scan created:', data.scan)
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Verification analysis failed.')
+      }
 
-      router.push(
-        `/processing?scanId=${encodeURIComponent(data.scanId)}&file=${encodeURIComponent(file.name)}&type=${encodeURIComponent(type)}`
-      )
-    } catch (error) {
-      console.error('Upload failed:', error)
-
-      alert(
-        error instanceof Error
-          ? error.message
-          : 'Failed to upload file'
-      )
+      toast.success('Analysis complete! Redirecting to report...')
+      router.push(`/report?scanId=${data.scanId}`)
+    } catch (err: any) {
+      toast.error(err.message || 'Error processing file.')
+      console.error('Verification error:', err)
     } finally {
-      setUploading(false)
+      setIsUploading(false)
     }
   }
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        title="New Verification"
-        description="Upload a file to run a full AI authenticity analysis."
-      />
+    <div className="mx-auto max-w-5xl space-y-8 px-4 py-8">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">New Verification</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Upload a file to run a full AI authenticity and forensic signal analysis.
+        </p>
+      </div>
 
-      {/* Upload area */}
-      <div className="mx-auto max-w-2xl space-y-5">
-        <UploadBox
-          onFileSelect={setFile}
-          className="min-h-[280px]"
+      <div
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={handleFileDrop}
+        onClick={() => fileInputRef.current?.click()}
+        className={cn(
+          'group relative flex min-h-[300px] cursor-pointer flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border/70 bg-card/20 p-8 text-center transition-all hover:border-primary/50 hover:bg-card/40',
+          file && 'border-primary/60 bg-primary/5'
+        )}
+      >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={handleFileSelect}
+          className="hidden"
+          accept="image/*,video/*,audio/*,.pdf"
         />
 
-        {/* Perks row */}
-        <div className="flex flex-wrap justify-center gap-4">
-          {perks.map((p) => (
-            <span
-              key={p}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground"
-            >
-              <CheckCircle2 className="size-4 text-success" />
-              {p}
-            </span>
-          ))}
+        <div className="flex size-16 items-center justify-center rounded-2xl bg-secondary/80 text-primary transition-transform group-hover:scale-105">
+          <UploadCloud className="size-8" />
         </div>
 
+        {file ? (
+          <div className="mt-4 space-y-1">
+            <p className="text-base font-semibold text-foreground">{file.name}</p>
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              {file.type || 'FILE'} · {(file.size / 1024).toFixed(1)} KB
+            </p>
+            <p className="pt-2 text-xs font-medium text-emerald-500">
+              File selected — click Verify Authenticity to continue
+            </p>
+          </div>
+        ) : (
+          <div className="mt-4 space-y-1">
+            <p className="text-sm font-medium text-foreground">
+              Drop your media file here, or <span className="text-primary underline">browse</span>
+            </p>
+            <p className="text-xs text-muted-foreground">Supports JPEG, PNG, MP4, WAV, MP3, and PDF</p>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-secondary/30 px-2.5 py-1 text-xs text-muted-foreground">
+            <ImageIcon className="size-3.5" /> Image
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-secondary/30 px-2.5 py-1 text-xs text-muted-foreground">
+            <Video className="size-3.5" /> Video
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-secondary/30 px-2.5 py-1 text-xs text-muted-foreground">
+            <Music className="size-3.5" /> Audio
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-lg border border-border/60 bg-secondary/30 px-2.5 py-1 text-xs text-muted-foreground">
+            <FileText className="size-3.5" /> PDF
+          </span>
+        </div>
+      </div>
+
+      <div className="flex justify-center">
         <Button
           size="lg"
-          className="gradient-brand w-full text-primary-foreground"
           onClick={handleVerify}
-          disabled={!file || uploading}
+          disabled={!file || isUploading}
+          className="gradient-brand min-w-[260px] text-primary-foreground font-semibold shadow-md"
         >
-          <ScanLine className="size-4" />
-
-          {uploading
-            ? 'Uploading...'
-            : 'Verify Authenticity'}
-
-          <ArrowRight className="size-4" />
+          {isUploading ? (
+            <div className="flex items-center gap-2">
+              <div className="size-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+              <span>Analyzing Neural Signals...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2">
+              <span>Verify Authenticity</span>
+              <ArrowRight className="size-4" />
+            </div>
+          )}
         </Button>
       </div>
 
-      {/* Recent reports */}
-      <Card className="glass-panel">
-        <CardHeader className="flex-row items-center justify-between">
-          <CardTitle className="text-base">
-            Recent Reports
-          </CardTitle>
-
+      <div className="space-y-4 pt-6">
+        <div className="flex items-center justify-between border-b border-border/50 pb-3">
+          <h2 className="text-lg font-semibold text-foreground">Recent Reports</h2>
           <Button
             variant="ghost"
             size="sm"
-            render={<Link href="/history" />}
+            onClick={() => router.push('/report')}
+            className="text-xs text-primary"
           >
-            View all
-            <ArrowRight className="size-3.5" />
+            View all →
           </Button>
-        </CardHeader>
+        </div>
 
-        <CardContent>
-          <ScansTable rows={scanHistory.slice(0, 5)} />
-        </CardContent>
-      </Card>
+        {loadingHistory ? (
+          <div className="flex justify-center py-8">
+            <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          </div>
+        ) : recentReports.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-border/60 py-10 text-center text-xs text-muted-foreground">
+            No verification reports found yet. Run your first scan above!
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/30">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-border/60 bg-secondary/20 text-xs font-semibold text-muted-foreground uppercase">
+                <tr>
+                  <th className="px-4 py-3">File</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Score</th>
+                  <th className="px-4 py-3">Verdict</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">Date</th>
+                  <th className="px-4 py-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {recentReports.map((item, idx) => {
+                  const uniqueKey = item.scanId || item.id || `recent-scan-${idx}`
+                  const displayName = item.fileName || item.name || 'Unnamed Scan'
+                  const displayId = item.scanId || item.id || ''
+                  const displayType = (item.fileType || item.type || 'image').toLowerCase()
+
+                  return (
+                    <tr key={uniqueKey} className="hover:bg-secondary/20 transition-colors">
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground max-w-[200px] truncate">
+                          {displayName}
+                        </p>
+                        <p className="font-mono text-xs text-muted-foreground">{displayId}</p>
+                      </td>
+                      <td className="px-4 py-3 capitalize text-xs text-muted-foreground">
+                        {displayType}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            'font-bold tabular-nums',
+                            item.score >= 70
+                              ? 'text-emerald-500'
+                              : item.score >= 45
+                              ? 'text-amber-500'
+                              : 'text-rose-500'
+                          )}
+                        >
+                          {item.score}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            'rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize',
+                            item.verdict === 'authentic'
+                              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
+                              : item.verdict === 'suspicious'
+                              ? 'border-amber-500/30 bg-amber-500/10 text-amber-500'
+                              : 'border-rose-500/30 bg-rose-500/10 text-rose-500'
+                          )}
+                        >
+                          {item.verdict}
+                        </span>
+                      </td>
+                      <td className="hidden px-4 py-3 text-xs text-muted-foreground sm:table-cell">
+                        {item.date}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => router.push(`/report?scanId=${displayId}`)}
+                          className="h-8 text-xs text-primary"
+                        >
+                          <Eye className="mr-1 size-3.5" />
+                          Inspect
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   )
-}
-
-function detectType(file: File): string {
-  const mime = file.type
-  const name = file.name.toLowerCase()
-
-  if (
-    mime.startsWith('image/') ||
-    /\.(png|jpg|jpeg|gif|webp|svg|bmp)$/.test(name)
-  ) {
-    return 'image'
-  }
-
-  if (
-    mime.startsWith('video/') ||
-    /\.(mp4|mov|avi|mkv|webm|flv)$/.test(name)
-  ) {
-    return 'video'
-  }
-
-  if (
-    mime.startsWith('audio/') ||
-    /\.(mp3|wav|ogg|aac|flac|m4a)$/.test(name)
-  ) {
-    return 'audio'
-  }
-
-  return 'document'
 }
